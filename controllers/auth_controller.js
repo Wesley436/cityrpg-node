@@ -1,29 +1,136 @@
-import { firebaseAuth } from "../config/Firebase.js";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { admin, firebaseAuth } from "../config/Firebase.js"
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
+import { firebaseConfig } from "../config/FirebaseConfig.js"
 
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
+import { createRequire } from "module"
+const require = createRequire(import.meta.url)
 
-const express = require('express');
-const auth_router = express.Router();
+const express = require('express')
+const axios = require('axios').default
+const auth_router = express.Router()
+
+function validateSession(req, res, next) {
+    const id_token = req.header('Authorization')?.replace('Bearer', '').trim()
+    const uid = req.header('uid')
+
+    if (!id_token || !uid) {
+        return res.status(401).json({"error": "Session invalid."})
+    }
+
+    admin.auth().verifyIdToken(id_token)
+    .then(function (decodedToken) {
+        if(decodedToken.uid === uid){
+            return next()
+        } else {
+            return res.status(401).json({"error": "Session invalid."})
+        }
+    }).catch(function () {
+        return res.status(401).json({"error": "Session invalid."})
+    })
+}
+
+auth_router.post("/refresh-token", async function (req, res) {
+    const { uid, refresh_token } = req.body
+
+    if (typeof refresh_token !== "string") {
+        return res.status(400).json({"error": "Invalid parameters."})
+    }
+
+    axios.post("https://securetoken.googleapis.com/v1/token?key=" + firebaseConfig.apiKey, {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token
+    })
+    .then(function (response) {
+        const id_token = response.data.id_token
+        admin.auth().verifyIdToken(id_token)
+        .then(function (decodedToken) {
+            if(decodedToken.uid === uid){
+                return res.status(200)
+                    .setHeader("uid", uid)
+                    .setHeader("id_token", id_token)
+                    .setHeader("refresh_token", refresh_token)
+                    .json({ "success": "Token refreshed",})
+            } else {
+                return res.status(400).json({"error": "Unable to refresh token."})
+            }
+        }).catch(function () {
+            return res.status(400).json({"error": "Unable to refresh token."})
+        })
+    })
+    .catch(function (error) {
+        console.log(error)
+        return res.status(400).json({"error": "Unable to refresh token."})
+    })
+})
 
 auth_router.post("/register", async function (req, res) {
-    const {email, password} = req.body
+    const {email, password, confirm_password} = req.body
+
+    if (typeof email !== "string" || typeof password !== "string" || typeof confirm_password !== "string") {
+        return res.status(400).json({"error": "Invalid parameters."})
+    }
+
+    if (!email || !password || !confirm_password) {
+        return res.status(400).json({"error": "Empty email or password."})
+    }
+
+    if (password !== confirm_password) {
+        return res.status(400).json({"error": "The two passwords are not the same."})
+    }
 
     try {
-        const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
-        console.log(`User Created Successfully: ${userCredential.user.uid}`);
+        await createUserWithEmailAndPassword(firebaseAuth, email, password)
+        .then(async (result) => {
+            return res.status(200)
+                .setHeader("uid", result.user.uid)
+                .setHeader("id_token", result.user.accessToken)
+                .setHeader("refresh_token", result.user.refreshToken)
+                .json({"success": "User Created Successfully"})
+        })
     } catch (error) {
-        console.log(error);
+        switch (error.code) {
+            case "auth/weak-password":
+                return res.status(400).json({"error": "Password must be 6 characters or longer."})
+            case "auth/email-already-in-use":
+                return res.status(400).json({"error": "Email already exists."})
+            default:
+                console.log(error)
+                return res.status(400).json({"error": "Unable to create account."})
+        }
     }
-    return res.status(200).json({});
-});
-
+})
 
 auth_router.post("/login", async function (req, res) {
-});
+    const {email, password} = req.body
 
-auth_router.get("/logout", function (req, res) {
-});
+    if (typeof email !== "string" || typeof password !== "string") {
+        return res.status(400).json({"error": "Invalid parameters."})
+    }
 
-export { auth_router };
+    if (!email || !password) {
+        return res.status(400).json({"error": "Empty email or password."})
+    }
+
+    try {
+        await signInWithEmailAndPassword(firebaseAuth, email, password)
+        .then(async (result) => {
+            return res.status(200)
+                .setHeader("uid", result.user.uid)
+                .setHeader("id_token", result.user.accessToken)
+                .setHeader("refresh_token", result.user.refreshToken)
+                .json({"success": "Login success."})
+        })
+    } catch (error) {
+        switch (error.code) {
+            case "auth/weak-password":
+                return res.status(400).json({"error": "Password must be 6 characters or longer."})
+            case "auth/email-already-in-use":
+                return res.status(400).json({"error": "Email already exists."})
+            default:
+                console.log(error)
+                return res.status(400).json({"error": "Login failed."})
+        }
+    }
+})
+
+export { auth_router, validateSession }
