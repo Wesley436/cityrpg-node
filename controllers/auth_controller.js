@@ -1,5 +1,5 @@
 import { admin, firebaseAuth } from "../config/Firebase.js"
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail  } from 'firebase/auth'
 import { firebaseConfig } from "../config/FirebaseConfig.js"
 
 import { createRequire } from "module"
@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url)
 const express = require('express')
 const axios = require('axios').default
 const auth_router = express.Router()
+const EMAIL_REGEX = "/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/."
 
 function validateSession(req, res, next) {
     const id_token = req.header('Authorization')?.replace('Bearer', '').trim()
@@ -36,7 +37,7 @@ auth_router.post("/refresh-token", async function (req, res) {
         return res.status(400).json({"error": "Invalid parameters."})
     }
 
-    axios.post("https://securetoken.googleapis.com/v1/token?key=" + firebaseConfig.apiKey, {
+    await axios.post("https://securetoken.googleapis.com/v1/token?key=" + firebaseConfig.apiKey, {
         "grant_type": "refresh_token",
         "refresh_token": refresh_token
     })
@@ -70,8 +71,8 @@ auth_router.post("/register", async function (req, res) {
         return res.status(400).json({"error": "Invalid parameters."})
     }
 
-    if (!email || !password || !confirm_password) {
-        return res.status(400).json({"error": "Empty email or password."})
+    if (!email || !password || !confirm_password || !email.match(EMAIL_REGEX)) {
+        return res.status(400).json({"error": "Invalid email or password."})
     }
 
     if (password !== confirm_password) {
@@ -80,7 +81,7 @@ auth_router.post("/register", async function (req, res) {
 
     try {
         await createUserWithEmailAndPassword(firebaseAuth, email, password)
-        .then(async (result) => {
+        .then((result) => {
             return res.status(200)
                 .setHeader("uid", result.user.uid)
                 .setHeader("id_token", result.user.accessToken)
@@ -107,13 +108,13 @@ auth_router.post("/login", async function (req, res) {
         return res.status(400).json({"error": "Invalid parameters."})
     }
 
-    if (!email || !password) {
-        return res.status(400).json({"error": "Empty email or password."})
+    if (!email || !password || !email.match(EMAIL_REGEX)) {
+        return res.status(400).json({"error": "Invalid email or password."})
     }
 
     try {
         await signInWithEmailAndPassword(firebaseAuth, email, password)
-        .then(async (result) => {
+        .then((result) => {
             return res.status(200)
                 .setHeader("uid", result.user.uid)
                 .setHeader("id_token", result.user.accessToken)
@@ -122,13 +123,37 @@ auth_router.post("/login", async function (req, res) {
         })
     } catch (error) {
         switch (error.code) {
-            case "auth/weak-password":
-                return res.status(400).json({"error": "Password must be 6 characters or longer."})
-            case "auth/email-already-in-use":
-                return res.status(400).json({"error": "Email already exists."})
+            case "auth/invalid-credential":
+                return res.status(400).json({"error": "Incorrect email or password."})
             default:
                 console.log(error)
                 return res.status(400).json({"error": "Login failed."})
+        }
+    }
+})
+
+auth_router.post("/forget-password", async function (req, res) {
+    const {email} = req.body
+
+    if (typeof email !== "string") {
+        return res.status(400).json({"error": "Invalid parameters."})
+    }
+
+    if (!email) {
+        return res.status(400).json({"error": "Empty email or password."})
+    }
+
+    try {
+        await sendPasswordResetEmail(firebaseAuth, email)
+        .then(() => {
+            return res.status(200)
+                .json({"success": "Reset password email sent."})
+        })
+    } catch (error) {
+        switch (error.code) {
+            default:
+                console.log(error)
+                return res.status(400).json({"error": "Failed to send reset password email."})
         }
     }
 })
