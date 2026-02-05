@@ -9,6 +9,15 @@ const app = express()
 app.use(bodyParser.json())
 const port = 8080
 
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept"
+  );
+  next();
+});
+
 // Define a route for GET requests to the root URL
 app.get('/', validateSession, async (req, res) => {
   firebaseDB.collection

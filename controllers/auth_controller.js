@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url)
 const express = require('express')
 const axios = require('axios').default
 const auth_router = express.Router()
-const EMAIL_REGEX = "/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/."
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 
 function validateSession(req, res, next) {
     const id_token = req.header('Authorization')?.replace('Bearer', '').trim()
@@ -71,7 +71,7 @@ auth_router.post("/register", async function (req, res) {
         return res.status(400).json({"error": "Invalid parameters."})
     }
 
-    if (!email || !password || !confirm_password || !email.match(EMAIL_REGEX)) {
+    if (!email || !password || !confirm_password || !EMAIL_REGEX.test(email)) {
         return res.status(400).json({"error": "Invalid email or password."})
     }
 
@@ -108,7 +108,7 @@ auth_router.post("/login", async function (req, res) {
         return res.status(400).json({"error": "Invalid parameters."})
     }
 
-    if (!email || !password || !email.match(EMAIL_REGEX)) {
+    if (!email || !password || !EMAIL_REGEX.test(email)) {
         return res.status(400).json({"error": "Invalid email or password."})
     }
 
