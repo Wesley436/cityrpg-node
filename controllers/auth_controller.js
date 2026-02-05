@@ -83,9 +83,9 @@ auth_router.post("/register", async function (req, res) {
         await createUserWithEmailAndPassword(firebaseAuth, email, password)
         .then((result) => {
             return res.status(200)
-                .setHeader("uid", result.user.uid)
-                .setHeader("id_token", result.user.accessToken)
-                .setHeader("refresh_token", result.user.refreshToken)
+                // .setHeader("uid", result.user.uid)
+                // .setHeader("id_token", result.user.accessToken)
+                // .setHeader("refresh_token", result.user.refreshToken)
                 .json({"success": "User Created Successfully"})
         })
     } catch (error) {
