@@ -13,8 +13,9 @@ app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.header(
     "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization, uid"
   );
+  res.header("Access-Control-Expose-Headers", "uid, id_token, refresh_token")
   next();
 });
 
@@ -23,7 +24,7 @@ app.get('/', validateSession, async (req, res) => {
   firebaseDB.collection
   const querySnapshot = await firebaseDB.collection("test").get()
       querySnapshot.forEach((doc) => {
-      res.send(`${doc.id} => ${doc.data().field}`)
+      res.send({"text": `${doc.id} => ${doc.data().field}`})
     }
   )
 })
