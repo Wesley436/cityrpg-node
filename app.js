@@ -1,5 +1,6 @@
 import { firebaseDB } from './config/Firebase.js'
 import { auth_router, validateSession } from './controllers/auth_controller.js'
+import { user_router } from './controllers/user_controller.js'
 import { createRequire } from "module"
 const require = createRequire(import.meta.url)
 
@@ -21,7 +22,6 @@ app.use((req, res, next) => {
 
 // Define a route for GET requests to the root URL
 app.get('/', validateSession, async (req, res) => {
-  firebaseDB.collection
   const querySnapshot = await firebaseDB.collection("test").get()
       querySnapshot.forEach((doc) => {
       res.send({"text": `${doc.id} => ${doc.data().field}`})
@@ -30,6 +30,7 @@ app.get('/', validateSession, async (req, res) => {
 })
 
 app.use("/auth", auth_router)
+app.use("/user", user_router)
 
 // Start the server
 app.listen(port, () => {

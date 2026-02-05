@@ -1,4 +1,4 @@
-import { admin, firebaseAuth } from "../config/Firebase.js"
+import { admin, firebaseAuth, firebaseDB } from "../config/Firebase.js"
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail  } from 'firebase/auth'
 import { firebaseConfig } from "../config/FirebaseConfig.js"
 
@@ -81,7 +81,12 @@ auth_router.post("/register", async function (req, res) {
 
     try {
         await createUserWithEmailAndPassword(firebaseAuth, email, password)
-        .then((result) => {
+        .then(async (result) => {
+            await firebaseDB.collection("users").doc(result.user.uid).set({
+                uid: result.user.uid,
+                email: email
+            })
+            
             return res.status(200)
                 // .setHeader("uid", result.user.uid)
                 // .setHeader("id_token", result.user.accessToken)
