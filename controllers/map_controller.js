@@ -9,8 +9,10 @@ const express = require('express')
 const map_router = express.Router()
 
 const RANGE = 500
+const INTERACTABLE_LIFETIME_SECOND = 3600
+const PROXIMITY_INTERACTABLE_LIMIT = 30
 
-function isInsideSquareMap(latitude, longitude, upperLatitude, lowerLatitude, upperLongitude, lowerLongitude) {
+function isInsideMapSquare(latitude, longitude, upperLatitude, lowerLatitude, upperLongitude, lowerLongitude) {
     return (
         (latitude >= lowerLatitude) && (latitude <= upperLatitude)
         && (longitude >= lowerLongitude) && (longitude <= upperLongitude)
@@ -29,6 +31,73 @@ function getCoordinatesWithinCircle(lat, long, range) {
     const longitude = long + compensatedLongDelta
 
     return { latitude, longitude }
+}
+
+async function expireInteractables(expiredInteractables) {
+    if (expiredInteractables.length > 0) {
+        const collectionRef = firebaseDB.collection("interactables")
+        const amountExpired = expiredInteractables.length
+        const batch = firebaseDB.batch();
+        expiredInteractables.forEach((interactable) => {
+            batch.delete(collectionRef.doc(interactable.id))
+        })
+        
+        try {
+            await batch.commit();
+            console.log(`${amountExpired} interactables expired`);
+        } catch (error) {
+            console.error('Error deleting interactables: ', error);
+        }
+    }
+}
+
+async function createInteractablesNearUser(proximityInteractables, latitude, longitude) {
+    if (proximityInteractables.length < PROXIMITY_INTERACTABLE_LIMIT) {
+        const collectionRef = firebaseDB.collection("interactables")
+        const amountToGenerate = PROXIMITY_INTERACTABLE_LIMIT - proximityInteractables.length
+
+        const batch = firebaseDB.batch();
+
+        for (let i = 0; i < amountToGenerate; i++) {
+            const coordinate = getCoordinatesWithinCircle(latitude, longitude, RANGE)
+            // console.log(coordinate)
+
+            const docRef = collectionRef.doc()
+
+            const chanceId = Math.floor(Math.random() * 100) + 1;
+            var itemType = "item"
+            switch (true) {
+                case chanceId < 25:
+                    itemType = "event"
+                    break;
+                case chanceId < 50:
+                    itemType = "monster"
+                    break;
+                case chanceId < 75:
+                    itemType = "item"
+                    break;
+                case chanceId < 100:
+                    itemType = "equipment"
+                    break;
+                default:
+                    break;
+            }
+            
+            batch.set(docRef, {
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude,
+                type: itemType,
+                created_at: Date.now()
+            })
+        }
+
+        try {
+            await batch.commit();
+            console.log(`Created ${amountToGenerate} interactables`);
+        } catch (error) {
+            console.error('Error creating interactables: ', error);
+        }
+    }
 }
 
 map_router.post("/load-region", validateSession, async function (req, res) {
@@ -87,76 +156,18 @@ map_router.post("/load-region", validateSession, async function (req, res) {
         querySnapshot.forEach((doc) => {
             const interactable = doc.data()
             interactable.id = doc.id
-            if (((Date.now() - interactable.created_at) / 1000) > 60) {
+            if (((Date.now() - interactable.created_at) / 1000) > INTERACTABLE_LIFETIME_SECOND) {
                 expiredInteractables.push(interactable)
             } else {
                 interactables.push(interactable)
             }
         })
 
-        const proximityInteractables = interactables.filter((interactable) => isInsideSquareMap(interactable.latitude, interactable.longitude, maxProximityLatitude, minProximityLatitude, maxProximityLongitude, minProximityLongitude));
+        const proximityInteractables = interactables.filter((interactable) => isInsideMapSquare(interactable.latitude, interactable.longitude, maxProximityLatitude, minProximityLatitude, maxProximityLongitude, minProximityLongitude));
 
-        const collectionRef = firebaseDB.collection("interactables")
-        if (expiredInteractables.length > 0) {
-            const amountExpired = expiredInteractables.length
-            const batch = firebaseDB.batch();
-            expiredInteractables.forEach((interactable) => {
-                batch.delete(collectionRef.doc(interactable.id))
-            })
-            
-            try {
-                await batch.commit();
-                console.log(`${amountExpired} interactables expired`);
-            } catch (error) {
-                console.error('Error deleting interactables: ', error);
-            }
-        }
+        await expireInteractables(expiredInteractables)
 
-        if (proximityInteractables.length < 30) {
-            const amountToGenerate = 30 - proximityInteractables.length
-
-            const batch = firebaseDB.batch();
-
-            for (let i = 0; i < amountToGenerate; i++) {
-                const coordinate = getCoordinatesWithinCircle(current_latitude, current_longitude, RANGE)
-                // console.log(coordinate)
-
-                const docRef = collectionRef.doc()
-
-                const chanceId = Math.floor(Math.random() * 100) + 1;
-                var itemType = "item"
-                switch (true) {
-                    case chanceId < 25:
-                        itemType = "event"
-                        break;
-                    case chanceId < 50:
-                        itemType = "monster"
-                        break;
-                    case chanceId < 75:
-                        itemType = "item"
-                        break;
-                    case chanceId < 100:
-                        itemType = "equipment"
-                        break;
-                    default:
-                        break;
-                }
-                
-                batch.set(docRef, {
-                    latitude: coordinate.latitude,
-                    longitude: coordinate.longitude,
-                    type: itemType,
-                    created_at: Date.now()
-                })
-            }
-
-            try {
-                await batch.commit();
-                console.log(`Created ${amountToGenerate} interactables`);
-            } catch (error) {
-                console.error('Error creating interactables: ', error);
-            }
-        }
+        await createInteractablesNearUser(proximityInteractables, current_latitude, current_longitude)
 
         return res.status(200).json({"interactables": interactables})
     })
