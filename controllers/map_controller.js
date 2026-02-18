@@ -1,6 +1,7 @@
 import { firebaseDB } from "../config/Firebase.js"
 import { validateSession } from "./auth_controller.js"
 import { Filter } from "firebase-admin/firestore"
+import { arrayUnion } from "firebase/firestore";
 
 import { createRequire } from "module"
 const require = createRequire(import.meta.url)
@@ -10,7 +11,7 @@ const map_router = express.Router()
 
 const RANGE = 500
 const INTERACTABLE_LIFETIME_SECOND = 3600
-const PROXIMITY_INTERACTABLE_LIMIT = 30
+const PROXIMITY_INTERACTABLE_LIMIT = 50
 
 function isInsideMapSquare(latitude, longitude, upperLatitude, lowerLatitude, upperLongitude, lowerLongitude) {
     return (
@@ -64,31 +65,76 @@ async function createInteractablesNearUser(proximityInteractables, latitude, lon
 
             const docRef = collectionRef.doc()
 
-            const chanceId = Math.floor(Math.random() * 100) + 1;
+            var interactableTypeChance = Math.floor(Math.random() * 4) + 1;
             var itemType = "item"
+            var interactable = {
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude,
+                type: itemType,
+                created_at: Date.now()
+            }
+            
             switch (true) {
-                case chanceId < 25:
-                    itemType = "event"
+                case interactableTypeChance == 1:
+                    interactable.type = "event"
                     break;
-                case chanceId < 50:
-                    itemType = "monster"
+                case interactableTypeChance == 2:
+                    interactable.type = "monster"
                     break;
-                case chanceId < 75:
-                    itemType = "item"
+                case interactableTypeChance == 3:
+                    interactable.type = "item"
+                    var itemChance = Math.floor(Math.random() * 4) + 1;
+                    switch (true) {
+                        case itemChance == 1:
+                            interactable.title = "Defense Potion"
+                            break;
+                        case itemChance == 2:
+                            interactable.title = "Speed Potion"
+                            break;
+                        case itemChance == 3:
+                            interactable.title = "Strength Potion"
+                            break;
+                        case itemChance == 4:
+                            interactable.title = "Healing Potion"
+                            break;
+                        default:
+                            break;
+                    }
                     break;
-                case chanceId < 100:
-                    itemType = "equipment"
+                case interactableTypeChance == 4:
+                    interactable.type = "equipment"
+                    const equipmentChance = Math.floor(Math.random() * 10) + 1;
+                    switch (true) {
+                        case equipmentChance == 1:
+                            interactable.title = "Helmet"
+                            break;
+                        case equipmentChance == 2:
+                            interactable.title = "Chestplate"
+                            break;
+                        case equipmentChance == 3:
+                            interactable.title = "Leggings"
+                            break;
+                        case equipmentChance == 4:
+                            interactable.title = "Boots"
+                            break;
+                        case equipmentChance <= 6:
+                            interactable.title = "Shield"
+                            break;
+                        case equipmentChance <= 8:
+                            interactable.title = "Axe"
+                            break;
+                        case equipmentChance <= 10:
+                            interactable.title = "Single Sword"
+                            break;
+                        default:
+                            break;
+                    }
                     break;
                 default:
                     break;
             }
             
-            batch.set(docRef, {
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude,
-                type: itemType,
-                created_at: Date.now()
-            })
+            batch.set(docRef, interactable)
         }
 
         try {
@@ -175,6 +221,42 @@ map_router.post("/load-region", validateSession, async function (req, res) {
         console.log(error)
         return res.status(400).json({"error": "Unable to get interactables."})
     });
+})
+
+map_router.post("/pick-up", validateSession, async function (req, res) {
+    const {interactable_id} = req.body
+
+    if (
+        typeof interactable_id !== "string"
+    ) {
+        return res.status(400).json({"error": "Invalid parameters."})
+    }
+
+    const uid = req.header('uid')
+
+    await firebaseDB.collection("interactables")
+    .doc(interactable_id).get()
+    .then(async (interactable_doc) => {
+        const interactable = interactable_doc.data()
+        await firebaseDB.collection("users").doc(uid).get()
+        .then(async(user_doc) => {
+            const user = user_doc.data()
+            const inventory = user.inventory ? user.inventory : []
+            inventory.push(interactable.title)
+            await firebaseDB.collection("users").doc(uid).update({
+                "inventory": inventory
+            })
+
+            await firebaseDB.collection("interactables").doc(interactable_id).delete()
+
+            return res.status(200)
+                .json(interactable)
+        })
+    })
+    .catch(function (error) {
+        console.log(error)
+        return res.status(400).json({"error": "Unable to pick up item."})
+    })
 })
 
 export { map_router }
