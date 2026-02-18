@@ -68,6 +68,7 @@ async function createInteractablesNearUser(proximityInteractables, latitude, lon
             var interactableTypeChance = Math.floor(Math.random() * 4) + 1;
             var itemType = "item"
             var interactable = {
+                id: docRef.id,
                 latitude: coordinate.latitude,
                 longitude: coordinate.longitude,
                 type: itemType,
@@ -242,7 +243,7 @@ map_router.post("/pick-up", validateSession, async function (req, res) {
         .then(async(user_doc) => {
             const user = user_doc.data()
             const inventory = user.inventory ? user.inventory : []
-            inventory.push(interactable.title)
+            inventory.push(JSON.stringify(interactable))
             await firebaseDB.collection("users").doc(uid).update({
                 "inventory": inventory
             })
