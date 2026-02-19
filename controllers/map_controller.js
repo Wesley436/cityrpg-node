@@ -104,7 +104,7 @@ async function createInteractablesNearUser(proximityInteractables, latitude, lon
                     break;
                 case interactableTypeChance == 4:
                     interactable.type = "equipment"
-                    const equipmentChance = Math.floor(Math.random() * 10) + 1;
+                    const equipmentChance = Math.floor(Math.random() * 9) + 1;
                     switch (true) {
                         case equipmentChance == 1:
                             interactable.title = "Helmet"
@@ -113,18 +113,15 @@ async function createInteractablesNearUser(proximityInteractables, latitude, lon
                             interactable.title = "Chestplate"
                             break;
                         case equipmentChance == 3:
-                            interactable.title = "Leggings"
-                            break;
-                        case equipmentChance == 4:
                             interactable.title = "Boots"
                             break;
-                        case equipmentChance <= 6:
+                        case equipmentChance <= 5:
                             interactable.title = "Shield"
                             break;
-                        case equipmentChance <= 8:
+                        case equipmentChance <= 7:
                             interactable.title = "Axe"
                             break;
-                        case equipmentChance <= 10:
+                        case equipmentChance <= 9:
                             interactable.title = "Single Sword"
                             break;
                         default:
@@ -227,9 +224,7 @@ map_router.post("/load-region", validateSession, async function (req, res) {
 map_router.post("/pick-up", validateSession, async function (req, res) {
     const {interactable_id} = req.body
 
-    if (
-        typeof interactable_id !== "string"
-    ) {
+    if ( typeof interactable_id !== "string") {
         return res.status(400).json({"error": "Invalid parameters."})
     }
 
