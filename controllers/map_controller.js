@@ -26,15 +26,15 @@ const DESCRIPTION_MAP = {
         "Epic": "Increase SPEED by 40 for next battle",
     },
     "Strength Potion": {
-        "Common": "Increase ATTACK by 5 for next battle",
-        "Uncommon": "Increase ATTACK by 10 for next battle",
-        "Rare": "Increase ATTACK by 15 for next battle",
-        "Epic": "Increase ATTACK by 20 for next battle",
+        "Common": "Increase STRENGTH by 5 for next battle",
+        "Uncommon": "Increase STRENGTH by 10 for next battle",
+        "Rare": "Increase STRENGTH by 15 for next battle",
+        "Epic": "Increase STRENGTH by 20 for next battle",
     },
     "Healing Potion": {
         "Common": "Restore 10 HEALTH",
         "Uncommon": "Restore 20 HEALTH",
-        "Rare": "Restore 30 HEALTHe",
+        "Rare": "Restore 30 HEALTH",
         "Epic": "Restore 50 HEALTH",
     },
     "Helmet": {

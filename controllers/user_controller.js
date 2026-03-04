@@ -3,6 +3,7 @@ import { firebaseDB } from "../config/Firebase.js"
 import { validateSession } from "./auth_controller.js"
 
 import { createRequire } from "module"
+import { useDefensePotion, useSpeedPotion, useStrengthPotion } from "../item-effects/potion_effects.js"
 const require = createRequire(import.meta.url)
 
 const express = require('express')
@@ -35,14 +36,15 @@ user_router.post("/use-item", validateSession, async function (req, res) {
 
     const uid = req.header('uid')
 
-    await firebaseDB.collection("users").doc(uid).get()
+    const docRef = firebaseDB.collection("users").doc(uid)
+    await docRef.get()
     .then(async(user_doc) => {
         var user = user_doc.data()
 
         if (["helmet", "chestplate", "boots", "weapon", "shield"].includes(item_id)) {
             const field = {}
             field[item_id] = FieldValue.delete()
-            await firebaseDB.collection("users").doc(uid).update(field)
+            await docRef.update(field)
             delete user[item_id]
         } else {
             var inventory = user.inventory ? user.inventory : []
@@ -67,8 +69,46 @@ user_router.post("/use-item", validateSession, async function (req, res) {
 
                 switch (item.type) {
                     case "item":
+                        var status_effects = user.status_effects ? user.status_effects : {}
+                        var health = JSON.parse(user.health)
+                        switch (item.title) {
+                            case "Defense Potion":
+                                useDefensePotion(status_effects, item)
+                                break;
+                            case "Speed Potion":
+                                useSpeedPotion(status_effects, item)
+                                break;
+                            case "Strength Potion":
+                                useStrengthPotion(status_effects, item)
+                                break;
+                            case "Healing Potion":
+                                var healAmount = 0
+                                switch (item.rarity) {
+                                    case "Common":
+                                        healAmount = 10
+                                        break;
+                                    case "Uncommon":
+                                        healAmount = 20
+                                        break;
+                                    case "Rare":
+                                        healAmount = 30
+                                        break;
+                                    case "Epic":
+                                        healAmount = 50
+                                        break;
+                                }
+
+                                health.current = Math.min(health.currentMax, health.current + healAmount)
+                                break;
+                            default:
+                                break;
+                        }
+
+
                         inventory = inventory.filter(i => !i.includes(item_id))
-                        await firebaseDB.collection("users").doc(uid).update({
+                        await docRef.update({
+                            "health": JSON.stringify(health),
+                            "status_effects": status_effects,
                             "inventory": inventory
                         })
 
@@ -99,7 +139,7 @@ user_router.post("/use-item", validateSession, async function (req, res) {
                         const field = {}
                         const equipmentString = JSON.stringify(item)
                         field[key] = equipmentString
-                        await firebaseDB.collection("users").doc(uid).update(field)
+                        await docRef.update(field)
 
                         user[key] = equipmentString
                         break
@@ -108,6 +148,26 @@ user_router.post("/use-item", validateSession, async function (req, res) {
             }
         }
         
+        return res.status(200).json(user)
+    })
+})
+
+user_router.post("/update-stats", validateSession, async function (req, res) {
+    const {health, strength, defense, speed} = req.body
+
+    const uid = req.header('uid')
+
+    const docRef = firebaseDB.collection("users").doc(uid)
+    await docRef.get()
+    .then(async(user_doc) => {
+        var user = user_doc.data()
+        await docRef.update({
+            health: JSON.stringify(health),
+            strength: JSON.stringify(strength),
+            defense: JSON.stringify(defense),
+            speed: JSON.stringify(speed)
+        })
+
         return res.status(200).json(user)
     })
 })
