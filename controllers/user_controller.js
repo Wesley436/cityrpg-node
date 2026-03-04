@@ -89,17 +89,19 @@ user_router.post("/use-item", validateSession, async function (req, res) {
                             case "Shield":
                                 key = "shield"
                                 break
-                            case "Axe", "Single Sword":
+                            case "Axe":
+                            case "Single Sword":
                                 key = "weapon"
                                 break
                             default:
                         }
                         
                         const field = {}
-                        field[key] = item.title
+                        const equipmentString = JSON.stringify(item)
+                        field[key] = equipmentString
                         await firebaseDB.collection("users").doc(uid).update(field)
 
-                        user[key] = item.title
+                        user[key] = equipmentString
                         break
                     default:
                 }

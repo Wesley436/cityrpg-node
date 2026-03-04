@@ -1,7 +1,6 @@
 import { firebaseDB } from "../config/Firebase.js"
 import { validateSession } from "./auth_controller.js"
 import { Filter } from "firebase-admin/firestore"
-import { arrayUnion } from "firebase/firestore";
 
 import { createRequire } from "module"
 const require = createRequire(import.meta.url)
@@ -12,6 +11,69 @@ const map_router = express.Router()
 const RANGE = 500
 const INTERACTABLE_LIFETIME_SECOND = 3600
 const PROXIMITY_INTERACTABLE_LIMIT = 50
+
+const DESCRIPTION_MAP = {
+    "Defense Potion": {
+        "Common": "Increase DEFENSE by 10 for next battle",
+        "Uncommon": "Increase DEFENSE by 20 for next battle",
+        "Rare": "Increase DEFENSE by 30 for next battle",
+        "Epic": "Increase DEFENSE by 50 for next battle",
+    },
+    "Speed Potion": {
+        "Common": "Increase SPEED by 10 for next battle",
+        "Uncommon": "Increase SPEED by 20 for next battle",
+        "Rare": "Increase SPEED by 30 for next battle",
+        "Epic": "Increase SPEED by 40 for next battle",
+    },
+    "Strength Potion": {
+        "Common": "Increase ATTACK by 5 for next battle",
+        "Uncommon": "Increase ATTACK by 10 for next battle",
+        "Rare": "Increase ATTACK by 15 for next battle",
+        "Epic": "Increase ATTACK by 20 for next battle",
+    },
+    "Healing Potion": {
+        "Common": "Restore 10 HEALTH",
+        "Uncommon": "Restore 20 HEALTH",
+        "Rare": "Restore 30 HEALTHe",
+        "Epic": "Restore 50 HEALTH",
+    },
+    "Helmet": {
+        "Common": "Increase interaction range by 50m",
+        "Uncommon": "Increase interaction range by 100m",
+        "Rare": "Increase interaction range by 150m",
+        "Epic": "Increase interaction range by 200m",
+    },
+    "Chestplate": {
+        "Common": "Increase DENFENSE by 5",
+        "Uncommon": "Increase DENFENSE by 10",
+        "Rare": "Increase DENFENSE by 15",
+        "Epic": "Increase DENFENSE by 20",
+    },
+    "Boots": {
+        "Common": "Increase SPEED by 5",
+        "Uncommon": "Increase SPEED by 10",
+        "Rare": "Increase SPEED by 15",
+        "Epic": "Increase SPEED by 20",
+    },
+    "Shield": {
+        "Common": "",
+        "Uncommon": "",
+        "Rare": "",
+        "Epic": "",
+    },
+    "Axe": {
+        "Common": "",
+        "Uncommon": "",
+        "Rare": "",
+        "Epic": "",
+    },
+    "Single Sword": {
+        "Common": "",
+        "Uncommon": "",
+        "Rare": "",
+        "Epic": "",
+    },
+}
 
 function isInsideMapSquare(latitude, longitude, upperLatitude, lowerLatitude, upperLongitude, lowerLongitude) {
     return (
@@ -74,6 +136,23 @@ async function createInteractablesNearUser(proximityInteractables, latitude, lon
                 type: itemType,
                 created_at: Date.now()
             }
+
+            var rarityChance = Math.floor(Math.random() * 10) + 1;
+            var rarity = "Common"
+            switch (true) {
+                case rarityChance < 4:
+                    rarity = "Common"
+                    break;
+                case rarityChance < 7:
+                    rarity = "Uncommon"
+                    break;
+                case rarityChance < 9:
+                    rarity = "Rare"
+                    break;
+                case rarityChance < 10:
+                    rarity = "Epic"
+                    break;
+            }
             
             switch (true) {
                 case interactableTypeChance == 1:
@@ -84,6 +163,7 @@ async function createInteractablesNearUser(proximityInteractables, latitude, lon
                     break;
                 case interactableTypeChance == 3:
                     interactable.type = "item"
+                    interactable.rarity = rarity
                     var itemChance = Math.floor(Math.random() * 4) + 1;
                     switch (true) {
                         case itemChance == 1:
@@ -101,9 +181,12 @@ async function createInteractablesNearUser(proximityInteractables, latitude, lon
                         default:
                             break;
                     }
+
+                    interactable.description = DESCRIPTION_MAP[interactable.title][interactable.rarity]
                     break;
                 case interactableTypeChance == 4:
                     interactable.type = "equipment"
+                    interactable.rarity = rarity
                     const equipmentChance = Math.floor(Math.random() * 9) + 1;
                     switch (true) {
                         case equipmentChance == 1:
@@ -127,6 +210,8 @@ async function createInteractablesNearUser(proximityInteractables, latitude, lon
                         default:
                             break;
                     }
+
+                    interactable.description = DESCRIPTION_MAP[interactable.title][interactable.rarity]
                     break;
                 default:
                     break;
