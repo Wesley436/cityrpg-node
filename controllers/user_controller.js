@@ -27,6 +27,49 @@ user_router.get("/:uid", validateSession, async function (req, res) {
     })
 })
 
+async function unequipItem(docRef, user, slot) {
+    const field = {}
+    field[slot] = FieldValue.delete()
+    await docRef.update(field)
+    delete user[slot]
+}
+
+user_router.post("/discard-item", validateSession, async function (req, res) {
+    const {item_id} = req.body
+
+    if ( typeof item_id !== "string") {
+        return res.status(400).json({"error": "Invalid parameters."})
+    }
+
+    const uid = req.header('uid')
+
+    const docRef = firebaseDB.collection("users").doc(uid)
+    await docRef.get()
+    .then(async(user_doc) => {
+        var user = user_doc.data()
+
+        for (const key of ["helmet", "chestplate", "boots", "weapon", "shield"]) {
+            if (user[key]) {
+                var equipment = JSON.parse(user[key])
+                if (item_id == equipment.id) {
+                    await unequipItem(docRef, user, key)
+                }
+            }
+        }
+
+        var inventory = user.inventory ? user.inventory : []
+
+        inventory = inventory.filter(i => !i.includes(item_id))
+        await docRef.update({
+            "inventory": inventory
+        })
+
+        user.inventory = inventory
+        
+        return res.status(200).json(user)
+    })
+})
+
 user_router.post("/use-item", validateSession, async function (req, res) {
     const {item_id} = req.body
 
