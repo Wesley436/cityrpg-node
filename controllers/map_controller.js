@@ -160,19 +160,36 @@ async function createInteractablesNearUser(proximityInteractables, latitude, lon
                     break;
                 case interactableTypeChance == 2:
                     interactable.type = "monster"
+                    var monsterChance = Math.floor(Math.random() * 10) + 1;
+                    switch (true) {
+                        case monsterChance <= 6:
+                            interactable.title = "Slime"
+                            interactable.max_health = 100
+                            break;
+                        case monsterChance <= 9:
+                            interactable.title = "Wolf"
+                            interactable.max_health = 200
+                            break;
+                        case monsterChance <= 10:
+                            interactable.title = "Bear"
+                            interactable.max_health = 300
+                            break;
+                        default:
+                            break;
+                    }
                     break;
                 case interactableTypeChance == 3:
                     interactable.type = "item"
                     interactable.rarity = rarity
                     var itemChance = Math.floor(Math.random() * 4) + 1;
                     switch (true) {
-                        case itemChance == 1:
+                        case itemChance <= 6:
                             interactable.title = "Defense Potion"
                             break;
-                        case itemChance == 2:
+                        case itemChance == 9:
                             interactable.title = "Speed Potion"
                             break;
-                        case itemChance == 3:
+                        case itemChance == 10:
                             interactable.title = "Strength Potion"
                             break;
                         case itemChance == 4:
@@ -337,6 +354,56 @@ map_router.post("/pick-up", validateSession, async function (req, res) {
     .catch(function (error) {
         console.log(error)
         return res.status(400).json({"error": "Unable to pick up item."})
+    })
+})
+
+map_router.post("/start-battle", validateSession, async function (req, res) {
+    const {interactable_id} = req.body
+
+    if ( typeof interactable_id !== "string") {
+        return res.status(400).json({"error": "Invalid parameters."})
+    }
+
+    const uid = req.header('uid')
+
+    await firebaseDB.collection("interactables")
+    .doc(interactable_id).get()
+    .then(async (interactable_doc) => {
+        const interactable = interactable_doc.data()
+
+        if (interactable.type === "monster") {
+            await firebaseDB.collection("battles").doc(uid).get()
+            .then(async(battle_doc) => {
+                if (battle_doc.exists) {
+                    return res.status(400).json({"error": "Already in a battle."})
+                }
+
+                await firebaseDB.collection("users").doc(uid).get()
+                .then(async(user_doc) => {
+                    const user = user_doc.data()
+
+                    const battle = {
+                        "user": JSON.stringify(user),
+                        "monster": JSON.stringify(interactable)
+                    }
+                    await firebaseDB.collection("battles").doc(uid).set(battle)
+
+                    // await firebaseDB.collection("interactables").doc(interactable_id).delete()
+
+                    return res.status(200)
+                        .json({
+                            "user": user,
+                            "monster": interactable
+                        })
+                })
+            })
+        } else {
+            return res.status(400).json({"error": "Not a monster."})
+        }
+    })
+    .catch(function (error) {
+        console.log(error)
+        return res.status(400).json({"error": "Unable to start battle."})
     })
 })
 

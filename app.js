@@ -1,6 +1,7 @@
 import { firebaseDB } from './config/Firebase.js'
 import { auth_router, validateSession } from './controllers/auth_controller.js'
 import { user_router } from './controllers/user_controller.js'
+import { battle_router } from './controllers/battle_controller.js'
 import { map_router } from './controllers/map_controller.js'
 import { createRequire } from "module"
 const require = createRequire(import.meta.url)
@@ -33,6 +34,7 @@ app.get('/', validateSession, async (req, res) => {
 app.use("/auth", auth_router)
 app.use("/user", user_router)
 app.use("/map", map_router)
+app.use("/battle", battle_router)
 
 // Start the server
 app.listen(port, () => {
