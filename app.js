@@ -25,10 +25,9 @@ app.use((req, res, next) => {
 // Define a route for GET requests to the root URL
 app.get('/', validateSession, async (req, res) => {
   const querySnapshot = await firebaseDB.collection("test").get()
-      querySnapshot.forEach((doc) => {
+    querySnapshot.forEach((doc) => {
       res.send({"text": `${doc.id} => ${doc.data().field}`})
-    }
-  )
+    })
 })
 
 app.use("/auth", auth_router)

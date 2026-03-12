@@ -37,9 +37,22 @@ battle_router.post("/end-battle", validateSession, async function (req, res) {
     .then(async () => {
         await firebaseDB.collection("battles").doc(uid).delete()
 
-        if (battle.monster?.current_health < 0) {
+        if (battle.monster?.current_health <= 0) {
             await firebaseDB.collection("interactables").doc(battle.monster.id).delete()
         }
+
+        var health = JSON.parse(battle.user.health)
+
+        if (health.current < 0) {
+            health.current = 0
+        }
+
+        var health_string = JSON.stringify(health)
+
+        await firebaseDB.collection("users").doc(uid).update({
+            "health": health_string,
+            "status_effects": {}
+        })
 
         return res.status(200)
         .json({
@@ -49,7 +62,8 @@ battle_router.post("/end-battle", validateSession, async function (req, res) {
 })
 
 battle_router.post("/update-battle", validateSession, async function (req, res) {
-    const {battle} = req.body
+    const {battle, action_bar} = req.body
+    battle.action_bar = action_bar
 
     const uid = req.header('uid')
 

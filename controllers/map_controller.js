@@ -4,7 +4,7 @@ import { Filter } from "firebase-admin/firestore"
 import { DESCRIPTION_MAP, EQUIPMENT_STRENGTH_MAP, EQUIPMENT_DEFENSE_MAP, EQUIPMENT_SPEED_MAP, EQUIPMENT_ACTIONS_MAP } from "../item-effects/equipment_details.js"
 
 import { createRequire } from "module"
-import { createBear, createSlime } from "../item-effects/monster_details.js"
+import { createBear, createSlime, createWolf } from "../item-effects/monster_details.js"
 const require = createRequire(import.meta.url)
 
 const express = require('express')
