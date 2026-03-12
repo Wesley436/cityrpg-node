@@ -25,4 +25,42 @@ battle_router.get("/:uid", validateSession, async function (req, res) {
     })
 })
 
+battle_router.post("/end-battle", validateSession, async function (req, res) {
+    const {battle} = req.body
+
+    const uid = req.header('uid')
+
+    await firebaseDB.collection("battle_records").doc(uid).collection("battle_records").doc()
+    .create({
+        battle: JSON.stringify(battle)
+    })
+    .then(async () => {
+        await firebaseDB.collection("battles").doc(uid).delete()
+
+        if (battle.monster?.current_health < 0) {
+            await firebaseDB.collection("interactables").doc(battle.monster.id).delete()
+        }
+
+        return res.status(200)
+        .json({
+
+        })
+    })
+})
+
+battle_router.post("/update-battle", validateSession, async function (req, res) {
+    const {battle} = req.body
+
+    const uid = req.header('uid')
+
+    await firebaseDB.collection("battles").doc(uid)
+    .set(battle)
+    .then(async () => {
+        return res.status(200)
+        .json({
+
+        })
+    })
+})
+
 export { battle_router }
