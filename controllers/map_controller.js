@@ -66,7 +66,7 @@ async function createInteractablesNearUser(proximityInteractables, latitude, lon
 
             const docRef = collectionRef.doc()
 
-            var interactableTypeChance = Math.floor(Math.random() * 4) + 1;
+            var interactableTypeChance = Math.floor(Math.random() * 3) + 2;
             var itemType = "item"
             var interactable = {
                 id: docRef.id,
@@ -119,13 +119,13 @@ async function createInteractablesNearUser(proximityInteractables, latitude, lon
                     interactable.rarity = rarity
                     var itemChance = Math.floor(Math.random() * 4) + 1;
                     switch (true) {
-                        case itemChance <= 6:
+                        case itemChance <= 1:
                             interactable.title = "Defense Potion"
                             break;
-                        case itemChance == 9:
+                        case itemChance == 2:
                             interactable.title = "Speed Potion"
                             break;
-                        case itemChance == 10:
+                        case itemChance == 3:
                             interactable.title = "Strength Potion"
                             break;
                         case itemChance == 4:
