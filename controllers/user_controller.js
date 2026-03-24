@@ -215,4 +215,21 @@ user_router.post("/update-stats", validateSession, async function (req, res) {
     })
 })
 
+user_router.post("/update-settings", validateSession, async function (req, res) {
+    const {enableNotiications} = req.body
+
+    const uid = req.header('uid')
+
+    const docRef = firebaseDB.collection("users").doc(uid)
+    await docRef.get()
+    .then(async(user_doc) => {
+        var user = user_doc.data()
+        await docRef.update({
+            enable_notifications: enableNotiications
+        })
+
+        return res.status(200).json(user)
+    })
+})
+
 export { user_router }
