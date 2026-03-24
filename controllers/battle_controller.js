@@ -47,6 +47,8 @@ battle_router.post("/end-battle", validateSession, async function (req, res) {
             health.current = 0
         }
 
+        health.lastRegeneratedAt = Date.now()
+
         var health_string = JSON.stringify(health)
 
         await firebaseDB.collection("users").doc(uid).update({
