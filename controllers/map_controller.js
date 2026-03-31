@@ -324,12 +324,16 @@ map_router.post("/start-battle", validateSession, async function (req, res) {
                 await firebaseDB.collection("users").doc(uid).get()
                 .then(async(user_doc) => {
                     const user = user_doc.data()
+                    user.in_battle = true
 
                     const battle = {
                         "user": JSON.stringify(user),
                         "monster": JSON.stringify(interactable)
                     }
                     await firebaseDB.collection("battles").doc(uid).set(battle)
+                    await firebaseDB.collection("users").doc(uid).update({
+                        "in_battle": true
+                    })
 
                     return res.status(200)
                         .json({

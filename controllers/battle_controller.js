@@ -53,7 +53,8 @@ battle_router.post("/end-battle", validateSession, async function (req, res) {
 
         await firebaseDB.collection("users").doc(uid).update({
             "health": health_string,
-            "status_effects": {}
+            "status_effects": {},
+            "in_battle": false
         })
 
         return res.status(200)
